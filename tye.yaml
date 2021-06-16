@@ -1,0 +1,77 @@
+# tye application configuration file
+# read all about it at https://github.com/dotnet/tye
+#
+# when you've given us a try, we'd love to know what you think:
+#    https://aka.ms/AA7q20u
+#
+name: bookstore
+extensions:
+- name: zipkin
+- name: seq
+  logPath: ./.logs
+ingress:
+  - name: public-ingress
+    bindings:
+      - port: 8080
+    rules:
+      - path: /api/auth
+        service: bookstore-auth-api
+      - path: /api/store
+        service: bookstore-store-api
+      - path: /api/warehouse
+        service: bookstore-warehouse-api
+services:
+  
+- name: bookstore-auth-api
+  project: Auth/BookStore.Auth.Api/BookStore.Auth.Api.csproj
+  replicas: 3
+- name: bookstore-auth-db
+  image: postgres
+  env:
+    - name: POSTGRES_PASSWORD
+      value: "4authpass@word"
+  bindings:
+    - port: 54321
+      containerPort: 5432
+      connectionString: Server=${host};Port=${port};User Id=postgres;Password=${env:POSTGRES_PASSWORD};
+
+- name: bookstore-store-api
+  project: Store/BookStore.Store.Api/BookStore.Store.Api.csproj
+  replicas: 3
+- name: bookstore-store-cache
+  image: redis
+  bindings:
+    - port: 6379
+      connectionString: "${host}:${port}"
+- name: bookstore-store-db
+  image: postgres
+  env:
+    - name: POSTGRES_PASSWORD
+      value: "st0r3pass@word"
+  bindings:
+    - port: 54322
+      containerPort: 5432
+      connectionString: Server=${host};Port=${port};User Id=postgres;Password=${env:POSTGRES_PASSWORD};
+
+- name: bookstore-warehouse-api
+  project: Warehouse/BookStore.Warehouse.Api/BookStore.Warehouse.Api.csproj
+  replicas: 3
+- name: bookstore-warehouse-db
+  image: postgres
+  env:
+    - name: POSTGRES_PASSWORD
+      value: "w4r3h0usepass@word"
+  bindings:
+    - port: 54323
+      containerPort: 5432
+      connectionString: Server=${host};Port=${port};User Id=postgres;Password=${env:POSTGRES_PASSWORD};
+
+- name: rabbit
+  image: rabbitmq:3-management
+  bindings:
+    - name: amqp-port
+      port: 5672
+      protocol: rabbitmq
+    - name: management-port
+      port: 15672
+      protocol: http
